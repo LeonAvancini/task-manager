@@ -3,18 +3,12 @@ import bcrypt from 'bcrypt'
 import validator from 'validator'
 import jwt from 'jsonwebtoken'
 import prisma from '../db/prisma'
+import { generateToken } from '../utils/jwt'
 
 const router = Router()
 
 const SALT_ROUNDS = 10
 const MIN_PASSWORD_LENGTH = 8
-const JWT_SECRET = process.env.JWT_SECRET
-
-if (!JWT_SECRET) {
-    throw new Error(
-        'JWT_SECRET is not defined. Please set it in the environment variables.'
-    )
-}
 
 const validateEmailAndPassword = (
     email: string,
@@ -83,9 +77,7 @@ router.post('/login', async (req: Request, res: Response) => {
             return
         }
 
-        const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
-            expiresIn: '1h',
-        })
+        const token = generateToken({ id: user.id, email: user.email })
 
         res.status(200)
             .header('Authorization', `Bearer ${token}`)
