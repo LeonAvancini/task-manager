@@ -1,9 +1,8 @@
 import { Request, Router, Response } from 'express'
-import { Task } from '../types/Task'
-import { PrismaClient } from '@prisma/client'
+import { Task } from '@prisma/client'
+import prisma from '../db/prisma'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 router.get('/', async (req: Request, res: Response) => {
     try {
