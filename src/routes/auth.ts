@@ -1,7 +1,6 @@
 import { Request, Router, Response } from 'express'
 import bcrypt from 'bcrypt'
 import validator from 'validator'
-import jwt from 'jsonwebtoken'
 import prisma from '../db/prisma'
 import { generateToken } from '../utils/jwt'
 

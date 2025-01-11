@@ -1,8 +1,11 @@
 import { Request, Router, Response } from 'express'
 import { Task } from '@prisma/client'
 import prisma from '../db/prisma'
+import { authenticate } from '../middlewares/auth'
 
 const router = Router()
+
+router.use(authenticate)
 
 router.get('/', async (req: Request, res: Response) => {
     try {
