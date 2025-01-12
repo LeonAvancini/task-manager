@@ -13,7 +13,6 @@ app.get('/', (req: Request, res: Response) => {
     res.send('Welcome to task manager API!')
 })
 
-// FIXME: add index routes to avoid add routes here...
 // Auth
 app.use('/api/auth', authRouter)
 
