@@ -17,9 +17,16 @@ export const authenticate = (
     const token = authHeader.split(' ')[1]
 
     try {
-        const decoded = verifyToken(token)
+        const decoded = verifyToken(token) as UserPayload
 
-        req.user = decoded as UserPayload
+        const userId = parseInt(decoded.id, 10)
+
+        if (isNaN(userId)) {
+            res.status(400).json({ message: 'Invalid user ID in token' })
+            return
+        }
+
+        req.userId = userId
 
         next()
     } catch (error) {

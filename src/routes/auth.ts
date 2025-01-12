@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import validator from 'validator'
 import prisma from '../db/prisma'
 import { generateToken } from '../utils/jwt'
+import { handleError } from '../utils/handleError'
 
 const router = Router()
 
@@ -26,16 +27,12 @@ router.post('/register', async (req: Request, res: Response) => {
     try {
         const validationError = validateEmailAndPassword(email, password)
         if (validationError) {
-            res.status(400).json({ message: validationError })
-            return
+            return handleError(res, 400, validationError)
         }
 
         const user = await prisma.user.findUnique({ where: { email } })
         if (user) {
-            res.status(409).json({
-                message: 'This email is already registered',
-            })
-            return
+            return handleError(res, 409, 'This email is already registered')
         }
 
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS)
@@ -49,8 +46,7 @@ router.post('/register', async (req: Request, res: Response) => {
             user: { id: newUser.id, email: newUser.email },
         })
     } catch (error) {
-        console.error('Error during registration:', error)
-        res.status(500).json({ message: 'Internal server error' })
+        handleError(res, 500, 'Internal server error', error)
     }
 })
 
@@ -60,20 +56,17 @@ router.post('/login', async (req: Request, res: Response) => {
     try {
         const validationError = validateEmailAndPassword(email, password)
         if (validationError) {
-            res.status(400).json({ message: validationError })
-            return
+            return handleError(res, 400, validationError)
         }
 
         const user = await prisma.user.findUnique({ where: { email } })
         if (!user) {
-            res.status(401).json({ message: 'Invalid email or password' })
-            return
+            return handleError(res, 401, 'Invalid email or password')
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password)
         if (!isPasswordValid) {
-            res.status(401).json({ message: 'Invalid email or password' })
-            return
+            return handleError(res, 401, 'Invalid email or password')
         }
 
         const token = generateToken({ id: user.id, email: user.email })
@@ -86,8 +79,7 @@ router.post('/login', async (req: Request, res: Response) => {
                 user: { id: user.id },
             })
     } catch (error) {
-        console.error('Error during login:', error)
-        res.status(500).json({ message: 'Internal server error' })
+        handleError(res, 500, 'Internal server error', error)
     }
 })
 export default router

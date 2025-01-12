@@ -1,101 +1,98 @@
 import { Request, Router, Response } from 'express'
-import { Task } from '@prisma/client'
 import prisma from '../db/prisma'
 import { authenticate } from '../middlewares/auth'
+import { handleError } from '../utils/handleError'
+import {
+    validateCreateTask,
+    validateTaskIdentifier,
+} from '../validations/taskValidations'
+import { validateUserId } from '../validations/userValidations'
 
 const router = Router()
 
 router.use(authenticate)
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', validateUserId, async (req: Request, res: Response) => {
     try {
-        const tasks = await prisma.task.findMany()
+        const tasks = await prisma.task.findMany({
+            where: { userId: req.userId },
+        })
         res.json({ tasks })
     } catch (error) {
-        console.error(error)
-        res.status(500).json({ message: 'Error fetching tasks' })
+        handleError(res, 500, 'Error fetching tasks', error)
     }
 })
 
-router.post('/', async (req: Request, res: Response) => {
-    const { name, description }: Task = req.body
-
-    if (!name) {
-        res.status(400).json({ message: 'Task name is required' })
-        return
-    }
-
+router.post('/', validateCreateTask, async (req: Request, res: Response) => {
     try {
-        await prisma.task.create({
-            data: {
-                name,
-                description,
-            },
+        const { userId, name, description } = req.body
+
+        const task = await prisma.task.create({
+            data: { userId, name, description },
         })
 
         res.status(201).json({
             message: 'Task created successfully',
+            task,
         })
     } catch (error) {
-        console.error('Error creating task:', error)
-        res.status(500).json({ message: 'Error creating task' })
+        handleError(res, 500, 'Error creating tasks', error)
     }
 })
 
-router.put('/:id', async (req: Request, res: Response) => {
-    try {
-        const taskId = parseInt(req.params.id, 10)
+router.put(
+    '/:id',
+    validateTaskIdentifier,
+    async (req: Request, res: Response) => {
+        try {
+            const { taskId, userId } = req.body
 
-        if (isNaN(taskId)) {
-            res.status(400).json({ message: 'Invalid task ID' })
-            return
+            const userTask = await prisma.task.findFirst({
+                where: { id: taskId, userId },
+            })
+
+            if (!userTask) {
+                return handleError(res, 404, 'Task not found')
+            }
+
+            const updatedTask = await prisma.task.update({
+                where: { id: taskId },
+                data: { completed: !userTask.completed },
+            })
+
+            res.json({
+                message: 'Task updated successfully',
+                task: updatedTask,
+            })
+        } catch (error) {
+            handleError(res, 500, 'Error updating task', error)
         }
-
-        const existingTask = await prisma.task.findUnique({
-            where: { id: taskId },
-        })
-
-        if (!existingTask) {
-            res.status(404).json({ message: 'Task not found' })
-            return
-        }
-
-        const updatedTask = await prisma.task.update({
-            where: { id: taskId },
-            data: { completed: !existingTask.completed },
-        })
-
-        res.json({ message: 'Task updated successfully', task: updatedTask })
-    } catch (error) {
-        console.error('Error updating task:', error)
-        res.status(500).json({ message: 'Error updating task' })
     }
-})
+)
 
-router.delete('/:id', async (req: Request, res: Response) => {
-    try {
-        const taskId = parseInt(req.params.id, 10)
+router.delete(
+    '/:id',
+    validateTaskIdentifier,
+    async (req: Request, res: Response) => {
+        try {
+            const { taskId, userId } = req.body
 
-        if (isNaN(taskId)) {
-            res.status(400).json({ message: 'Invalid task ID' })
-            return
+            const existingTask = await prisma.task.findFirst({
+                where: { id: taskId, userId },
+            })
+
+            if (!existingTask) {
+                return handleError(res, 404, 'Task not found')
+            }
+
+            await prisma.task.delete({
+                where: { id: taskId },
+            })
+            res.json({ message: `${existingTask.name} deleted successfully!` })
+        } catch (error) {
+            handleError(res, 500, 'Error deleting task', error)
         }
-
-        const existingTask = await prisma.task.findUnique({
-            where: { id: taskId },
-        })
-
-        if (!existingTask) {
-            res.status(404).json({ message: 'Task not found' })
-            return
-        }
-
-        await prisma.task.delete({ where: { id: taskId } })
-        res.json({ message: `${existingTask.name} deleted successfully!` })
-    } catch (error) {
-        console.error('Error deleting task:', error)
-        res.status(500).json({ message: 'Error deleting task' })
     }
-})
+)
 
 export default router
